@@ -47,6 +47,8 @@ __all__ = [
     'MYSTUFF_SCRIPT',
     'ABCUT_MARKER',
     'ABCUT_STYLE',
+    'LUSERTUBE_MARKER',
+    'LUSERTUBE_SCRIPT',
     'AVPICKER_MARKER',
     'AVPICKER_STYLE',
     'AVPICKER_SCRIPT',
@@ -60,6 +62,8 @@ __all__ = [
     'DEDUPEPAGING_SCRIPT',
     'CRASHRECOVERY_MARKER',
     'CRASHRECOVERY_SCRIPT',
+    'SWIPARR_MARKER',
+    'SWIPARR_SCRIPT',
     'MBCSS_MARKER',
     'MBCSS_LINK',
     'ITEMCACHE_MARKER',
@@ -1346,6 +1350,43 @@ ABCUT_STYLE = ('<style id="sf-ab-cut">'
                '{display:none!important;}'
                '</style>')
 
+LUSERTUBE_MARKER = 'jf-lusertube-link'
+LUSERTUBE_SCRIPT = r'''<script>(function(){
+/* jf-lusertube-link */
+/* Adds a "LUSERTUBE" entry to the hamburger drawer pointing at the YT Zero
+   instance (your-jellyfin-host.example). Same construction as
+   jf-swiparr-link: native menuLinks in config.json do NOT render in this
+   plugin-modified jellyfin-web build, so inject the anchor directly. Plain
+   <a target=_blank> rather than an emby-linkbutton so the SPA router never
+   tries to resolve the external URL as an in-app route. Idempotent, with an
+   observer + interval re-add because the drawer is rebuilt on every
+   navigation/login. */
+var LT=(window.SF_CONFIG&&window.SF_CONFIG.lusertubeUrl)||'';
+if(!LT)return;
+function closeDrawer(){var d=document.querySelector('.mainDrawer');if(d&&d.classList.contains('drawer-open')){var b=document.querySelector('.mainDrawerButton');if(b)b.click();}}
+function add(){
+var c=document.querySelector('.customMenuOptions')||document.querySelector('.mainDrawer-scrollContainer');
+if(!c||c.querySelector('.jf-lusertube-link'))return;
+var a=document.createElement('a');
+a.className='navMenuOption emby-button jf-lusertube-link';
+a.href=LT;a.target='_blank';a.rel='noopener noreferrer';
+a.innerHTML='<span class="material-icons navMenuOptionIcon" aria-hidden="true">smart_display</span><span class="navMenuOptionText">LUSERTUBE</span>';
+a.addEventListener('click',function(){setTimeout(closeDrawer,60);});
+c.appendChild(a);
+}
+new MutationObserver(add).observe(document.body,{childList:true,subtree:true});
+setInterval(add,1500);add();
+})();</script>'''
+
+# --- Slim down the now-playing bar on phones (2026-08-04).
+# Measured on a 414px-wide viewport with music actually playing: the bar was
+# 110px = 15% of the screen, and the only reachable controls were Mute and More.
+# Jellyfin sets .nowPlayingBarCenter{display:none} at narrow widths, and that is
+# exactly where previous / play-pause / next live -- so on a phone you could mute
+# but not pause. Mute is also redundant (hardware volume buttons).
+# After: 84px = 11%, with prev / play-pause / next reachable. Verified live.
+# Keyed off viewport width, NOT a layout class: Jellyfin reported
+# layout-desktop even at 414px, so .layout-mobile would not have matched.
 AVPICKER_MARKER = 'sf-avatar-picker'
 # Lets every user choose their own profile picture from the icon pack served at
 # /web/avatars/<category>/<name>.png (manifest.json lists the categories).
@@ -2115,6 +2156,36 @@ location.hash='#/home';
 }
 });
 })();</script>'''
+
+SWIPARR_MARKER = 'jf-swiparr-link'
+SWIPARR_SCRIPT = r'''<script>(function(){
+/* jf-swiparr-link */
+/* Adds a "What to Watch" entry to the hamburger drawer (.customMenuOptions,
+   right under Home) that opens Swiparr (Tinder-for-movies, deployed on the NAS
+   at your-jellyfin-host.example, Jellyfin-backed) in a new tab. Native
+   menuLinks in config.json do NOT render in this plugin-modified jellyfin-web
+   build (customMenuOptions is referenced in 0 loaded chunks -- verified live),
+   so this injects the link directly instead. Plain <a target=_blank>, not an
+   emby-linkbutton, so the SPA router never tries to treat the external URL as
+   an in-app route. Idempotent + observer/interval re-add because the drawer is
+   rebuilt on every navigation/login (same pattern as the Live TV/Home tabs). */
+var SW=(window.SF_CONFIG&&window.SF_CONFIG.swiparrUrl)||'';
+if(!SW)return;
+function closeDrawer(){var d=document.querySelector('.mainDrawer');if(d&&d.classList.contains('drawer-open')){var b=document.querySelector('.mainDrawerButton');if(b)b.click();}}
+function add(){
+var c=document.querySelector('.customMenuOptions')||document.querySelector('.mainDrawer-scrollContainer');
+if(!c||c.querySelector('.jf-swiparr-link'))return;
+var a=document.createElement('a');
+a.className='navMenuOption emby-button jf-swiparr-link';
+a.href=SW;a.target='_blank';a.rel='noopener noreferrer';
+a.innerHTML='<span class="material-icons navMenuOptionIcon" aria-hidden="true">swipe</span><span class="navMenuOptionText">What to Watch</span>';
+a.addEventListener('click',function(){setTimeout(closeDrawer,60);});
+c.appendChild(a);
+}
+new MutationObserver(add).observe(document.body,{childList:true,subtree:true});
+setInterval(add,1500);add();
+})();</script>'''
+
 
 MBCSS_MARKER = 'sf-mediabar-css'
 MBCSS_LINK = ('<link rel="stylesheet" href="sf-mediabar.css" id="sf-mediabar-css">'

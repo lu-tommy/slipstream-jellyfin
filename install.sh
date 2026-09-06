@@ -13,6 +13,9 @@ DO_CRON=0
 DO_CSS=0
 ASSUME_YES=0
 FORCE=0
+DO_PLUGINS=0
+JF_URL="${JELLYFIN_URL:-}"
+JF_KEY="${JELLYFIN_API_KEY:-}"
 WEBROOT=""
 
 say()  { printf '  %s\n' "$*"; }
@@ -31,6 +34,10 @@ Slipstream for Jellyfin
                      a Jellyfin image update resets the web root and undoes this)
   --write-css        write the stylesheet into Jellyfin's Custom CSS for you
                      (edits branding.xml and restarts the container)
+  --plugins          add the plugin repositories and install the plugins this
+                     UI expects. Needs --jellyfin-url and --api-key (or the
+                     JELLYFIN_URL / JELLYFIN_API_KEY environment variables).
+                     Create a key in Dashboard > API Keys.
   --force            rebuild even if the deployed build is current
   --yes              do not prompt
   -h, --help         this message
@@ -44,6 +51,9 @@ while [ $# -gt 0 ]; do
     --write-css) DO_CSS=1; shift ;;
     --yes|-y)    ASSUME_YES=1; shift ;;
     --force)     FORCE=1; shift ;;
+    --plugins)   DO_PLUGINS=1; shift ;;
+    --jellyfin-url) JF_URL="${2:-}"; shift 2 ;;
+    --api-key)   JF_KEY="${2:-}"; shift 2 ;;
     -h|--help)   usage; exit 0 ;;
     *) die "unknown option: $1 (try --help)" ;;
   esac
@@ -228,6 +238,21 @@ PY
   else
     warn "could not find branding.xml -- paste the CSS manually (see below)."
     DO_CSS=0
+  fi
+fi
+
+# ------------------------------------------------------------ 9b. plugins
+if [ "$DO_PLUGINS" = 1 ]; then
+  if [ -z "$JF_URL" ] || [ -z "$JF_KEY" ]; then
+    warn "--plugins needs --jellyfin-url and --api-key (Dashboard > API Keys)."
+    say  "    ./install.sh --plugins --jellyfin-url http://localhost:8096 --api-key KEY"
+  elif [ ! -f "$HERE/plugins.json" ]; then
+    warn "plugins.json is missing -- skipping plugin setup."
+  else
+    # The key is read from the argument/environment and used only against the
+    # server you named. It is never written to disk by this script.
+    python3 "$HERE/tools/plugins.py" "$JF_URL" "$JF_KEY" "$HERE/plugins.json" || \
+      warn "plugin setup did not complete -- see the messages above."
   fi
 fi
 

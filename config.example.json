@@ -1,13 +1,24 @@
 {
   "_comment": [
-    "Optional. Copy to build/config.json to enable the few features that need to",
-    "know an id on YOUR server. Every value is optional and defaults to empty;",
-    "each consumer explicitly guards for that, so leaving this file out is fine.",
-    "Find a library id by opening the library in Jellyfin and reading topParentId",
-    "(or parentId) out of the URL."
+    "Optional. Copy to build/config.json and re-run ./install.sh --force.",
+    "Every value defaults to empty and every consumer guards for that, so",
+    "skipping this file entirely is fine -- those features just stay off.",
+    "Find a library id by opening the library in Jellyfin and reading",
+    "topParentId (or parentId) out of the address bar."
   ],
+
   "musicLibraryId": "",
   "audiobookLibraryId": "",
+
+  "_services": [
+    "These point at self-hosted companion apps. Leave blank unless you run",
+    "them -- a blank value removes the feature rather than leaving a dead link.",
+    "The request/search bridge is found automatically at /requestbridge on the",
+    "same origin (or port 8099 on a direct LAN connection), so it needs no key."
+  ],
   "sportsBridgeUrl": "",
+  "lusertubeUrl": "",
+  "swiparrUrl": "",
+
   "drawerHideHrefs": []
 }

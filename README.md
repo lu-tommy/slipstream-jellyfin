@@ -1,7 +1,7 @@
 # Slipstream for Jellyfin
 
-A premium-feel UI layer for the Jellyfin web client — built around **navigation
-that never blinks**.
+The complete Jellyfin front-end setup I run at home, packaged so you can get
+**the same thing** — built around **navigation that never blinks**.
 
 Stock Jellyfin renders every route change as a hard swap: the old page is
 hidden, the new one appears, and in between you get white flashes, rows that
@@ -16,11 +16,11 @@ colours and glass; Slipstream owns the motion, the layout and the behaviour.
 ```
 git clone https://github.com/lu-tommy/slipstream-jellyfin.git
 cd slipstream-jellyfin
-./install.sh --cron
+./install.sh --cron --write-css
 ```
 
-Then paste one CSS file into Jellyfin's Custom CSS box (or pass `--write-css`
-and let the installer do it). That's the whole install.
+That is the whole install: **91 patch blocks**, the stylesheet, and the theme.
+Add `--plugins` and it will set up the plugins too.
 
 ---
 
@@ -29,12 +29,13 @@ and let the installer do it). That's the whole install.
 - [What it changes](#what-it-changes)
 - [Requirements](#requirements)
 - [Install](#install)
+- [Plugins](#plugins)
 - [The stylesheet](#the-stylesheet)
 - [Keeping it through Jellyfin updates](#keeping-it-through-jellyfin-updates)
 - [Configuration](#configuration)
 - [Uninstall](#uninstall)
 - [How it works](#how-it-works)
-- [What is *not* included](#what-is-not-included)
+- [Companion services](#companion-services)
 - [Troubleshooting](#troubleshooting)
 - [Credits](#credits)
 - [License](#license)
@@ -93,7 +94,28 @@ The part most of the work went into.
   metadata and 30-second seek.
 - Music playlists filtered to audio; Album Artists folded into Artists.
 
-The installer prints every block it applies — **59** of them.
+### Search, requests and language
+
+- Search results are re-ranked so an artist search returns that artist's own
+  albums instead of covers and mashups, with a skeleton instead of a spinner.
+- Optional request UI: search for something you don't have and request it,
+  including "get everything by this artist" — needs the request bridge below.
+- A full UI translation layer with a language toggle, plus per-user translated
+  titles and plot summaries.
+
+### Live TV
+
+- A guide that filters to what you actually get, channel cards with artwork,
+  "ends at" times on a 12-hour clock, and a resume path back into a live
+  channel.
+
+### Audiobooks
+
+- A dedicated audiobook library treatment: shelves, chapter list, a
+  full-screen player with speed, skip, sleep timer and auto-rewind, lock-screen
+  metadata, and read-along when an aligned text is available.
+
+The installer prints every block it applies — **91** of them.
 
 ---
 
@@ -106,9 +128,9 @@ The installer prints every block it applies — **59** of them.
 | **Host access** | a shell on the Docker host, with permission to run `docker` |
 | **Tools** | `docker`, `python3`, `curl` (all standard). `node` optional but strongly recommended — it enables the syntax check that refuses to deploy a broken build |
 
-**Optional plugins.** Slipstream detects and improves these if present, and
-stays out of the way if not: [Media Bar][mediabar] (the home hero) and
-Jellyfin Enhanced.
+**Plugins.** Several blocks build on Jellyfin plugins. `./install.sh --plugins`
+sets them up for you — see [Plugins](#plugins). Anything missing simply means
+the blocks that use it stay inert; nothing breaks.
 
 > **Why this needs shell access.** Abyss is pure CSS, so it installs by pasting
 > into Jellyfin's Custom CSS box. Most of Slipstream is **JavaScript**, and
@@ -147,7 +169,7 @@ Expected output:
   ✓ saved the original index.html -> backups/original/ (5331 bytes)
   ✓ Abyss theme installed (51676 bytes, AumGupta/abyss-jellyfin)
   ✓ Media Bar stylesheet installed (optional plugin, IAmParadox27)
-  ✓ built 59 blocks + sf-livesports.js (726638 bytes)
+  ✓ built 91 blocks + sf-livesports.js (726805 bytes)
   ✓ syntax check passed
   ✓ deployed to jellyfin
 ```
@@ -164,6 +186,45 @@ Expected output:
 
 Re-running is safe and cheap: if the deployed build already matches your
 checkout, it says `already up to date` and does nothing.
+
+---
+
+## Plugins
+
+Several blocks build on plugins. The installer can add the repositories and
+install them for you:
+
+```bash
+./install.sh --plugins \
+  --jellyfin-url http://localhost:8096 \
+  --api-key YOUR_KEY
+```
+
+Create the key in **Dashboard → API Keys**. It is used only against the server
+you name and is never written to disk. Restart Jellyfin afterwards, then re-run
+`./install.sh`.
+
+**Used by the UI** — install these to get everything:
+
+| Plugin | What depends on it |
+|---|---|
+| [Media Bar][mediabar] | the home hero / spotlight |
+| Jellyfin Enhanced | shortcuts, bookmarks, hidden content, subtitle styling |
+| Home Screen Sections | the custom home rows |
+| File Transformation | how several plugins inject into the web client |
+| Plugin Pages | plugin settings pages (and the request-count dedupe) |
+| Collection Sections | collection rows on home |
+| LogoSwap | replaces the Jellyfin wordmark with your own logo |
+
+**The rest of my setup** — metadata and quality-of-life, safe to skip:
+AudioDB, Fanart, InPlayerEpisodePreview, Intro Skipper, LrcLib Lyrics,
+MusicBrainz, OMDb, Open Subtitles, Playback Reporting, Studio Images, TMDb,
+TheTVDB.
+
+`plugins.json` records the exact versions this was built against.
+
+> **LogoSwap note.** The stylesheet does *not* ship my logo. Upload your own in
+> the LogoSwap plugin and it appears automatically.
 
 ---
 
@@ -227,7 +288,9 @@ cp config.example.json build/config.json
 |---|---|
 | `musicLibraryId` | scopes the Artists list to your Music library |
 | `audiobookLibraryId` | enables the audiobook library shelves |
-| `sportsBridgeUrl` | a companion channel feed (see below) |
+| `sportsBridgeUrl` | live sports channel feed — see [Companion services](#companion-services) |
+| `lusertubeUrl` | drawer shortcut to a self-hosted app (omit to hide the entry) |
+| `swiparrUrl` | drawer shortcut to a self-hosted app (omit to hide the entry) |
 | `drawerHideHrefs` | extra sidebar entries to hide, matched on `href` |
 
 Every value defaults to empty and every consumer guards for that, so skipping
@@ -257,7 +320,7 @@ docker compose up -d --force-recreate jellyfin
 ```
 build/jfblocks/*.py        payload constants (JS + CSS), grouped by area
         |
-build/jf_patch.py          applies 56 blocks to a copy of index.html,
+build/jf_patch.py          applies 91 blocks to a copy of index.html,
         |                  and writes the ~726 KB runtime as a separate file
         v
 index.html + sf-livesports.js  -->  docker cp  -->  container web root
@@ -286,19 +349,22 @@ the comment above it first.
 
 ---
 
-## What is *not* included
+## Companion services
 
-This repo is the **UI and motion layer**. The setup it was extracted from also
-had features wired to self-hosted companion services, and those are left out
-rather than shipped broken:
+A few features talk to small self-hosted services that are **not** part of this
+repo. Each one is optional and inert when unconfigured — the UI never shows a
+dead control:
 
-- Live TV / guide customisation and the sports browse page
-- Request and search-ranking integrations (Jellyseerr-backed)
-- Multilingual UI and per-user translated titles
-- The audiobook acquisition pipeline and read-along alignment
+| Feature | Needs | How it is found |
+|---|---|---|
+| Request / "get all by artist", music search rows, audiobook requests | a request-bridge service on port **8099** | automatically: `/requestbridge` on the same origin, or port 8099 on a direct LAN connection |
+| Live sports channel cards | a channel feed | `sportsBridgeUrl` in config |
+| Drawer shortcuts to other apps | your own URLs | `lusertubeUrl`, `swiparrUrl` in config |
+| Read-along (text synced to audiobook narration) | pre-aligned data served by the bridge | via the request bridge |
 
-The audiobook *player* UI is included — it works with any Jellyfin audiobook
-library. The `sportsBridgeUrl` hook is present but inert unless configured.
+Everything else — the whole UI, motion system, detail pages, Live TV, music,
+audiobook playback, search ranking and translations — runs against a stock
+Jellyfin with no extra services.
 
 ---
 

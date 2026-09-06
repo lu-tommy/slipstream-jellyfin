@@ -1,0 +1,78 @@
+{
+  "_comment": [
+    "Plugin set this UI was built against. install.sh --plugins adds the",
+    "repositories and installs them through the Jellyfin API.",
+    "'required' plugins have UI blocks that depend on them; the rest are",
+    "metadata/quality-of-life providers you can skip."
+  ],
+  "repositories": [
+    {
+      "Name": "Jellyfin Stable",
+      "Url": "https://repo.jellyfin.org/files/plugin/manifest.json"
+    },
+    {
+      "Name": "intro skipper",
+      "Url": "https://intro-skipper.org/manifest.json"
+    },
+    {
+      "Name": "IAmParadox27",
+      "Url": "https://www.iamparadox.dev/jellyfin/plugins/manifest.json"
+    },
+    {
+      "Name": "logoswap",
+      "Url": "https://raw.githubusercontent.com/NewsGuyTor/LogoSwap/main/manifest.json"
+    },
+    {
+      "Name": "jellyfin enhanced",
+      "Url": "https://raw.githubusercontent.com/n00bcodr/jellyfin-plugins/main/10.11/manifest.json"
+    },
+    {
+      "Name": "inplayerepisodepreview",
+      "Url": "https://raw.githubusercontent.com/Namo2/InPlayerEpisodePreview/master/manifest.json"
+    }
+  ],
+  "required": [
+    "Collection Sections",
+    "File Transformation",
+    "Home Screen Sections",
+    "Jellyfin Enhanced",
+    "LogoSwap",
+    "Media Bar",
+    "Plugin Pages"
+  ],
+  "optional": [
+    "AudioDB",
+    "Fanart",
+    "InPlayerEpisodePreview",
+    "Intro Skipper",
+    "LrcLib Lyrics",
+    "MusicBrainz",
+    "OMDb",
+    "Open Subtitles",
+    "Playback Reporting",
+    "Studio Images",
+    "TMDb",
+    "TheTVDB"
+  ],
+  "built_against": {
+    "AudioDB": "10.11.11.0",
+    "Collection Sections": "2.3.10.0",
+    "Fanart": "14.0.0.0",
+    "File Transformation": "2.5.11.0",
+    "Home Screen Sections": "2.5.11.0",
+    "InPlayerEpisodePreview": "1.6.1.2",
+    "Intro Skipper": "1.10.11.19",
+    "Jellyfin Enhanced": "11.12.0.0",
+    "LogoSwap": "1.5.0.0",
+    "LrcLib Lyrics": "3.0.0.0",
+    "Media Bar": "2.4.12.0",
+    "MusicBrainz": "10.11.11.0",
+    "OMDb": "10.11.11.0",
+    "Open Subtitles": "24.0.0.0",
+    "Playback Reporting": "17.0.0.0",
+    "Plugin Pages": "2.4.11.0",
+    "Studio Images": "10.11.11.0",
+    "TMDb": "10.11.11.0",
+    "TheTVDB": "22.0.0.0"
+  }
+}

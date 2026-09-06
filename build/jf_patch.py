@@ -46,6 +46,28 @@ for v in ['v1','v2','v3','v4','v5','v6','v7']:
         print(f'removed: {marker}')
         changed = True
 
+# Strip any prior version, then always re-inject -- the same shape the sports
+# tab uses. This was `if LIVETV_MARKER not in html: ... else: skip`, i.e.
+# write-once, so every subsequent edit to LIVETV_SCRIPT was silently discarded
+# on an already-patched index.html. Matched on addLiveTvTab so it also catches
+# the version that predates the comment marker.
+if 'addLiveTvTab' in html:
+    html = re.sub(
+        r'<script>\(function\(\)\{\s*(?:/\* jf-livetv-tab \*/)?\s*function addLiveTvTab\(\).*?\}\)\(\);</script>',
+        '', html, flags=re.S)
+    print('removed old live tv tab')
+# --- sf-mediabar-local: serve a PATCHED Media Bar instead of the CDN copy.
+# Upstream resolves its locale from AudioLanguagePreference first, which is "eng"
+# for every user here (it picks the audio TRACK, not the interface), so the
+# slideshow always loaded English strings and its Play / Resume labels stayed
+# English whatever the interface language was -- measured html lang=zh-cn and de
+# while AudioLanguagePreference was "eng" in both. The local copy asks
+# document.documentElement.lang first. Matching on the CDN path rather than a
+# pinned version so a plugin update still gets redirected.
+html = html.replace('</body>', LIVETV_SCRIPT + '</body>')
+print('patched: live tv tab')
+changed = True
+
 # Strip any prior copy, then always re-inject -- see unfreeze note. This was
 # `if HOME_MARKER not in html: ... else: skip`, i.e. write-once, so every later
 # edit to HOME_SCRIPT was silently discarded on an already-patched file.
@@ -70,6 +92,55 @@ if re.search(r'<script>\(function\(\)\{ /\* jf-endsat-12h \*/', html):
     print('removed old endsat')
 html = html.replace('</body>', ENDSAT_SCRIPT + '</body>')
 print('patched: ends-at 12h')
+changed = True
+
+# Strip any prior copy, then always re-inject -- see unfreeze note. This was
+# `if NOWLINE_MARKER not in html: ... else: skip`, i.e. write-once, so every later
+# edit to NOWLINE_SCRIPT was silently discarded on an already-patched file.
+# Same misplaced-indent bug as jf-endsat-12h above -- jf-now-line-v8 is also in the
+# early-exit chain, so it was the second reason the chain could never be satisfied.
+if re.search(r'<script>\(function\(\)\{if\(!document\.getElementById\("jf-now-css"\)', html):
+    html = re.sub(r'<script>\(function\(\)\{if\(!document\.getElementById\("jf-now-css"\).*?\}\)\(\);</script>', '', html, flags=re.S)
+    print('removed old nowline')
+html = html.replace('</body>', NOWLINE_SCRIPT + '</body>')
+print('patched: now-line v8')
+changed = True
+
+# live tv resume: strip any prior version, then (re)inject the current one.
+# Must land BEFORE live tv control in the DOM (both execute top-to-bottom on
+# page load, synchronously, before either's setInterval callbacks fire) so
+# window.__sfLiveTvStashResume already exists by the time sf-livetv-control
+# tries to call it.
+if LIVETVRESUME_MARKER in html:
+    html = re.sub(r'<script>\(function\(\)\{\s*/\* sf-livetv-resume \*/.*?\}\)\(\);</script>', '', html, flags=re.S)
+    print('removed old live tv resume')
+html = html.replace('</body>', LIVETVRESUME_SCRIPT + '</body>')
+print('patched: live tv resume (auto-heal reload now resumes the channel instead of bouncing to home)')
+changed = True
+
+# live tv control: strip any prior version, then (re)inject the current one
+if LIVECTRL_MARKER in html:
+    html = re.sub(r'<script>\(function\(\)\{\s*/\* sf-livetv-control \*/.*?\}\)\(\);</script>', '', html, flags=re.S)
+    print('removed old live tv control')
+html = html.replace('</body>', LIVECTRL_SCRIPT + '</body>')
+print('patched: live tv control (no-pause/no-seek + drift/stall recovery)')
+changed = True
+
+# guide sub-filter pills: strip any prior version, then (re)inject the current one
+if GUIDEFILTER_MARKER in html:
+    html = re.sub(r'<script>\(function\(\)\{\s*/\* sf-guide-filter \*/.*?\}\)\(\);</script>', '', html, flags=re.S)
+    print('removed old guide filter')
+html = html.replace('</body>', GUIDEFILTER_SCRIPT + '</body>')
+print('patched: guide sub-filter pills (All / Live Sports / Movies & TV)')
+changed = True
+
+# channel/program card art cleanup (Channels + Programs tabs): strip any
+# prior version, then (re)inject the current one
+if CHANNELCARDS_MARKER in html:
+    html = re.sub(r'<script>\(function\(\)\{\s*/\* sf-channelcards \*/.*?\}\)\(\);</script>', '', html, flags=re.S)
+    print('removed old channel cards')
+html = html.replace('</body>', CHANNELCARDS_SCRIPT + '</body>')
+print('patched: channel/program card art (themed placeholders for ErsatzTV/upcoming/informational channels)')
 changed = True
 
 # custom Live Sports browse page (streamfree.top-style cards, hooked into the
@@ -101,6 +172,35 @@ if _ls_cur != _ls_body:
     print('wrote sf-livesports.js (%d bytes)' % len(_ls_body))
 html = html.replace('</body>', '<script src="sf-livesports.js?v=' + _ls_hash + '"></script></body>')
 print('patched: core runtime (motion, navigation lifecycle, detail pages, music)')
+changed = True
+
+if REQSEARCH_MARKER in html:
+    html = re.sub(r'<script>\(function\(\)\{\s*/\* sf-request-search \*/.*?\}\)\(\);</script>', '', html, flags=re.S)
+    print('removed old request-search UI')
+html = html.replace('</body>', REQSEARCH_SCRIPT + '</body>')
+print('patched: search-page request UI (missing music/audiobooks with Request buttons)')
+changed = True
+
+if SEARCHSKEL_MARKER in html:
+    html = re.sub(r'<script>\(function\(\)\{\s*/\* sf-search-skel \*/.*?\}\)\(\);</script>', '', html, flags=re.S)
+    print('removed old search skeleton')
+html = html.replace('</body>', SEARCHSKEL_SCRIPT + '</body>')
+print('patched: search loading skeleton (fills the blank window before results land)')
+changed = True
+
+if SEARCHRANK_MARKER in html:
+    html = re.sub(r'<script>\(function\(\)\{\s*/\* sf-search-rank \*/.*?\}\)\(\);</script>', '', html, flags=re.S)
+    print('removed old search ranking')
+html = html.replace('</body>', SEARCHRANK_SCRIPT + '</body>')
+print('patched: search section ranking (library video > music > people > Jellyseerr > requests)')
+
+# sf-search-i18n: let a German/Chinese user find a film by the title their own
+# cards show. Display-only and per-user, like the rest of the i18n work.
+if SEARCHI18N_MARKER in html:
+    html = re.sub(r'<script>\(function\(\)\{\s*/\* sf-search-i18n \*/.*?\}\)\(\);</script>', '', html, flags=re.S)
+    print('removed old search-i18n')
+html = html.replace('</body>', SEARCHI18N_SCRIPT + '</body>')
+print('patched: search matches translated titles (de/zh)')
 changed = True
 
 if TYPINGGUARD_MARKER in html:
@@ -204,6 +304,16 @@ if SEAMLESS_MARKER in html:
     print('removed old seamless-subtitle defaults')
 html = html.replace('</body>', SEAMLESS_SCRIPT + '</body>')
 
+# collapse duplicate English subtitle entries in the picker
+if ONELANG_MARKER in html:
+    html = re.sub(r'<script>\(function\(\)\{/\* sf-sub-onelang \*/.*?\}\)\(\);</script>', '', html, flags=re.S)
+    print('removed old english-subtitle collapse')
+html = html.replace('</body>', ONELANG_SCRIPT + '</body>')
+print('patched: exactly one English subtitle entry in the picker')
+print('patched: seamless subtitle switching (PGS client-side, no burn-in)')
+print('patched: pin web clients to one subtitle renderer')
+changed = True
+
 # no home spinner: strip any prior version, then (re)inject the current one
 if NOSPINNER_MARKER in html:
     html = re.sub(r'<style id="jf-no-home-spinner">.*?</style>', '', html, flags=re.S)
@@ -218,6 +328,14 @@ if SCROLLFIX_MARKER in html:
     print('removed old scroller fix')
 html = html.replace('</body>', SCROLLFIX_SCRIPT + '</body>')
 print('patched: scroller fix (row next/prev arrows no longer crash blank)')
+changed = True
+
+# seerr fallback: strip any prior version, then (re)inject the current one
+if SEERRFALLBACK_MARKER in html:
+    html = re.sub(r'<script>\(function\(\)\{\s*/\* jf-seerr-fallback \*/.*?\}\)\(\);</script>', '', html, flags=re.S)
+    print('removed old seerr fallback')
+html = html.replace('</body>', SEERRFALLBACK_SCRIPT + '</body>')
+print('patched: seerr fallback (My Library / Discover on Seerr tabs, library default)')
 changed = True
 
 # dedupe paging: strip any prior version, then (re)inject the current one
@@ -253,6 +371,14 @@ if 'jf-play-loading' in html:
     print('removed play-loading overlay (user requested removal)')
     changed = True
 
+# swiparr drawer link: strip any prior version, then (re)inject the current one
+if SWIPARR_MARKER in html:
+    html = re.sub(r'<script>\(function\(\)\{\s*/\* jf-swiparr-link \*/.*?\}\)\(\);</script>', '', html, flags=re.S)
+    print('removed old swiparr link')
+html = html.replace('</body>', SWIPARR_SCRIPT + '</body>')
+print('patched: swiparr "What to Watch" drawer link')
+changed = True
+
 # media bar stylesheet: local copy, injected before anything else in <head>
 if MBCSS_MARKER not in html:
     html = html.replace('<head>', '<head>' + MBCSS_LINK, 1)
@@ -272,6 +398,14 @@ html = html.replace('</head>', ITEMCACHE_SCRIPT + '</head>', 1)
 print('patched: short-TTL item cache')
 changed = True
 
+
+# watchlist drawer link: strip any prior version, then (re)inject the current one
+if WATCHLIST_MARKER in html:
+    html = re.sub(r'<script>\(function\(\)\{\s*/\* jf-watchlist-link \*/.*?\}\)\(\);</script>', '', html, flags=re.S)
+    print('removed old watchlist link')
+html = html.replace('</body>', WATCHLIST_SCRIPT + '</body>')
+print('patched: watchlist drawer link')
+changed = True
 
 # bookmarks Movies/Series tab header-overlap fix: strip any prior version, then (re)inject
 if BMFIX_MARKER in html:
@@ -337,6 +471,14 @@ if PAUSEREP_MARKER in html:
     print('removed old pause-report guard')
 html = html.replace('</body>', PAUSEREP_SCRIPT + '</body>')
 print('patched: a paused tab can no longer rewind your saved position')
+changed = True
+
+# guide layout: strip any prior version, then (re)inject
+if GUIDEFIX_MARKER in html:
+    html = re.sub(r'<style id="sf-guide-fix">.*?</style>', '', html, flags=re.S)
+    print('removed old guide fix')
+html = html.replace('</head>', GUIDEFIX_STYLE + '</head>')
+print('patched: guide (channel names, now badge, empty lanes)')
 changed = True
 
 # volume popover: strip any prior version, then (re)inject
@@ -414,12 +556,36 @@ if 'favicons/touchicon512.png" id="jf-favicon"' not in html:
         print('patched: tab icon -> favicons/touchicon512.png')
         changed = True
 
+# watchlist button: strip any prior version, then (re)inject the current one
+if WATCHLISTBTN_MARKER in html:
+    html = re.sub(r'<script>\(function\(\)\{\s*/\* jf-watchlist-btn \*/.*?\}\)\(\);</script>', '', html, flags=re.S)
+    print('removed old watchlist button')
+html = html.replace('</body>', WATCHLISTBTN_SCRIPT + '</body>')
+print('patched: watchlist button (Hide -> Add to Watchlist)')
+changed = True
+
+# favorites watchlist sub-tab: strip any prior version, then (re)inject
+if FAVWL_MARKER in html:
+    html = re.sub(r'<script>\(function\(\)\{\s*/\* jf-fav-watchlist \*/.*?\}\)\(\);</script>', '', html, flags=re.S)
+    print('removed old favorites watchlist tab')
+html = html.replace('</body>', FAVWL_SCRIPT + '</body>')
+print('patched: favorites sub-tabs (Favorites | Watchlist)')
+changed = True
+
 # detail action row settle: strip any prior version, then (re)inject
 if BTNSETTLE_MARKER in html:
     html = re.sub(r'<script>\(function\(\)\{\s*/\* jf-btn-settle \*/.*?\}\)\(\);</script>', '', html, flags=re.S)
     print('removed old button settle')
 html = html.replace('</body>', BTNSETTLE_SCRIPT + '</body>')
 print('patched: detail action row reveals as one')
+changed = True
+
+# sports tab: strip any prior version, then (re)inject
+if SPORTSTAB_MARKER in html:
+    html = re.sub(r'<script>\(function\(\)\{\s*/\* jf-sports-tab \*/.*?\}\)\(\);</script>', '', html, flags=re.S)
+    print('removed old sports tab')
+html = html.replace('</body>', SPORTSTAB_SCRIPT + '</body>')
+print('patched: Sports tab (home header -> Programs / live sports)')
 changed = True
 
 # hero layout: strip any prior version, then (re)inject
@@ -430,6 +596,15 @@ html = html.replace('</body>', HEROLAYOUT_SCRIPT + '</body>')
 print('patched: hero layout (measure-based, any viewport)')
 changed = True
 
+# live tv home pane: strip any prior version, then (re)inject
+if LIVETVPANE_MARKER in html:
+    html = re.sub(r'<script>\(function\(\)\{\s*/\* jf-livetv-pane \*/.*?\}\)\(\);</script>', '', html, flags=re.S)
+    print('removed old live tv pane')
+html = html.replace('</body>', LIVETVPANE_SCRIPT + '</body>')
+print('patched: Live TV home pane (#/home?livetv=1)')
+changed = True
+
+
 # plugin pages dedupe: strip any prior version, then (re)inject
 if PAGESDEDUPE_MARKER in html:
     html = re.sub(r'<script>\(function\(\)\{\s*/\* jf-pluginpages-dedupe \*/.*?\}\)\(\);</script>', '', html, flags=re.S)
@@ -437,6 +612,15 @@ if PAGESDEDUPE_MARKER in html:
 html = html.replace('</body>', PAGESDEDUPE_SCRIPT + '</body>')
 print('patched: plugin pages dedupe (1 request instead of ~8)')
 changed = True
+
+# hide search-page suggestions: strip any prior version, then (re)inject
+if NOSEARCHSUGG_MARKER in html:
+    html = re.sub(r'<style id="jf-no-search-suggestions">.*?</style>', '', html, flags=re.S)
+    print('removed old search-suggestions hide')
+html = html.replace('</body>', NOSEARCHSUGG_STYLE + '</body>')
+print('patched: hide search page suggestions')
+changed = True
+
 
 # bookmark item-id shim: strip any prior version, then (re)inject
 if BMITEMID_MARKER in html:
@@ -456,6 +640,15 @@ print('patched: home Favorites pill -> My Stuff')
 changed = True
 
 
+# sports page tab takeover: strip any prior version, then (re)inject
+if SPORTSPAGE_MARKER in html:
+    html = re.sub(r'<script>\(function\(\)\{ /\* jf-sports-page \*/.*?\}\)\(\);</script>', '', html, flags=re.S)
+    print('removed old sports page takeover')
+html = html.replace('</body>', SPORTSPAGE_SCRIPT + '</body>')
+print('patched: sports page keeps the main tabs')
+changed = True
+
+
 # hide the chapters/scenes row: strip any prior version, then (re)inject
 if HOLDROWS_MARKER in html:
     html = re.sub(r'<style id="sf-holdrows">.*?</style>', '', html, flags=re.S)
@@ -469,6 +662,22 @@ if ABCUT_MARKER in html:
     print('removed old audiobook control css')
 html = html.replace('</body>', ABCUT_STYLE + '</body>')
 print('patched: audiobook control hierarchy (+ heart/cast hidden on books)')
+changed = True
+
+if NOCHAPTERS_MARKER in html:
+    html = re.sub(r'<style id="jf-no-chapters">.*?</style>', '', html, flags=re.S)
+    print('removed old chapters hide')
+html = html.replace('</body>', NOCHAPTERS_STYLE + '</body>')
+print('patched: hide chapters/scenes section')
+changed = True
+
+
+# lusertube drawer link: strip any prior version, then (re)inject
+if LUSERTUBE_MARKER in html:
+    html = re.sub(r'<script>\(function\(\)\{\s*/\* jf-lusertube-link \*/.*?\}\)\(\);</script>', '', html, flags=re.S)
+    print('removed old lusertube link')
+html = html.replace('</body>', LUSERTUBE_SCRIPT + '</body>')
+print('patched: LUSERTUBE drawer link')
 changed = True
 
 # avatar picker: strip any prior version, then (re)inject
@@ -515,6 +724,14 @@ if MUSICARTISTLBL_MARKER in html:
     print('removed old music artist label')
 html = html.replace('</body>', MUSICARTISTLBL_SCRIPT + '</body>')
 print('patched: Album artists -> Artists')
+changed = True
+
+# jellyseerr row clipping: strip any prior version, then (re)inject
+if SEERRCLIP_MARKER in html:
+    html = re.sub(r'<style id="jf-seerr-clip">.*?</style>', '', html, flags=re.S)
+    print('removed old seerr row clipping')
+html = html.replace('</body>', SEERRCLIP_STYLE + '</body>')
+print('patched: jellyseerr detail rows clip like native rows')
 changed = True
 
 if ABSTAGE_MARKER in html:
@@ -679,6 +896,24 @@ print('patched: card menu closes after Remove')
 changed = True
 
 
+# audiobook chapters: strip any prior version, then (re)inject
+if CHAPTERS_MARKER in html:
+    html = re.sub(r'<script>\(function\(\)\{\s*/\* sf-audiobook-chapters \*/.*?\}\)\(\);</script>',
+                  '', html, flags=re.S)
+    print('removed old audiobook chapters')
+html = html.replace('</body>', CHAPTERS_SCRIPT + '</body>')
+print('patched: audiobook chapters section')
+changed = True
+
+
+
+# audiobook player: strip any prior version, then (re)inject
+if ABPLAYER_MARKER in html:
+    html = re.sub(r'<script>\(function\(\)\{\s*/\* sf-audiobook-player \*/.*?\}\)\(\);</script>',
+                  '', html, flags=re.S)
+    print('removed old audiobook player')
+html = html.replace('</body>', ABPLAYER_SCRIPT + '</body>')
+
 # audiobook lock-screen controls: must load AFTER the player block, because it
 # reads window.__sfAbApi which that block publishes.
 if MEDIASESSION_MARKER in html:
@@ -687,7 +922,48 @@ if MEDIASESSION_MARKER in html:
 html = html.replace('</body>', MEDIASESSION_SCRIPT + '</body>')
 print('patched: audiobook lock-screen controls (position state + 30s seek)')
 
+if READALONG_MARKER in html:
+    html = re.sub(r'<script>\(function\(\)\{\s*/\* sf-readalong \*/.*?\}\)\(\);</script>',
+                  '', html, flags=re.S)
+    print('removed old read-along')
+html = html.replace('</body>', READALONG_SCRIPT + '</body>')
+print('patched: read-along (sentence-synced book text for audiobooks)')
+changed = True
+
 print('patched: audiobook player controls')
+changed = True
+
+
+# language toggle: strip any prior version, then (re)inject
+if LANGTOGGLE_MARKER in html:
+    html = re.sub(r'<script>\(function\(\)\{\s*/\* sf-lang-toggle \*/.*?\}\)\(\);</script>',
+                  '', html, flags=re.S)
+    print('removed old language toggle')
+html = html.replace('</body>', LANGTOGGLE_SCRIPT + '</body>')
+if SUBLANG_MARKER not in html:
+    html = html.replace('</body>', SUBLANG_SCRIPT + '</body>')
+    print('patched: subtitle language follows the header language')
+print('patched: header language toggle')
+changed = True
+
+
+# ui translation sweep: strip any prior version, then (re)inject
+if I18N_MARKER in html:
+    html = re.sub(r'<script>\(function\(\)\{\s*/\* sf-ui-i18n \*/.*?\}\)\(\);</script>',
+                  '', html, flags=re.S)
+    print('removed old i18n sweep')
+html = html.replace('</body>', I18N_SCRIPT + '</body>')
+print('patched: UI string translation (de/zh)')
+changed = True
+
+
+# per-language titles: strip any prior version, then (re)inject
+if TITLEI18N_MARKER in html:
+    html = re.sub(r'<script>\(function\(\)\{\s*/\* sf-title-i18n \*/.*?\}\)\(\);</script>',
+                  '', html, flags=re.S)
+    print('removed old title i18n')
+html = html.replace('</body>', TITLEI18N_SCRIPT + '</body>')
+print('patched: per-language titles (zh/de)')
 changed = True
 
 
